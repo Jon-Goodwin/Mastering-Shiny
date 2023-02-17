@@ -10,7 +10,7 @@ sapply(c(
 "gapminder", "ggforce", "gh", "globals", "openintro", "profvis",
 "RSQLite", "shiny", "shinycssloaders", "shinyFeedback",
 "shinythemes", "testthat", "thematic", "tidyverse", "vroom",
-"waiter", "xml2", "zeallot"
+"waiter", "xml2", "zeallot", "lubridate", "reactable"
 ), require, character.only = TRUE)
 
 ```
@@ -130,7 +130,267 @@ shinyApp(ui, server)
 
 ## Chapter 2 Basic UI
 
-```{r}
+#### Free Text
+
+Collect small amounts of text with textInput(), passwords with passwordInput(),
+and paragraphs of text with textAreaInput():
+
+#### Numeric Inputs
+
+To collect numeric values, create a constrained text box with numericInput() or a
+slider with sliderInput(). If you supply a length-2 numeric vector for the default
+value of sliderInput(), you get a “range” slider with two ends
+
+#### Dates
+
+Collect a single day with dateInput() or a range of two days with dateRangeInput()
+
+#### Limited Choices
+
+There are two different approaches to allow the user to choose from a prespecified set
+of options: selectInput() and radioButtons():
+
+#### File Uploads
+
+Allow the user to upload a file with fileInput()
+
+#### Action Buttons
+
+Let the user perform an action with actionButton() or actionLink()
+
+
+```{r 2.1-1}
+
+ui <- fluidPage(
+  textInput("name", label = NULL, placeholder = "Your name", value = "")
+)
+
+shinyApp(ui, server)
 
 ```
+
+
+```{r 2.1-2}
+
+ui <- fluidPage(
+  sliderInput("delivery", label = "When should we deliver?", value = ymd("2020-09-17"), min = ymd("2020-09-16"), max = ymd("2020-09-23"))
+)
+
+shinyApp(ui, server)
+
+
+```
+
+```{r 2.1-3}
+
+ui <- fluidPage(
+  sliderInput("range", label = "Choose a range", value = 50, min = 0, max = 100, step = 5,
+              animate = TRUE)
+)
+
+shinyApp(ui, server)
+
+```
+
+
+```{r 2.1-4}
+## Use choices
+
+x <- list(Group1 = c(1,2,3,4,5), Group2 = c(4,5,6,7,8))
+
+ui <- fluidPage(
+  selectInput("num", label = "Choose a member from a group", choices = x)
+)
+
+shinyApp(ui, server)
+
+```
+
+### Outputs
+
+#### Text
+
+Output regular text with textOutput() and fixed width text (e.g., console output)
+with verbatimTextOutput()
+
+#### Tables
+
+There are two options for displaying data frames in tables:
+
+tableOutput() and renderTable()
+These render a static table of data, showing all the data at once.
+
+dataTableOutput() and renderDataTable()
+These render a dynamic table, showing a fixed number of rows along with controls
+to change which rows are visible.
+
+#### Plots
+
+You can display any type of R graphic with plotOutpu() and renderPlot()
+
+#### Downloads
+
+You can let the user download a file with downloadButton() or downloadLink().
+
+```{r 2.2-1}
+
+# a) User verbatimTextOutput()
+
+# b) use textOutput()
+
+# c) use verbatimTextOutput()
+
+# d) verbatimTextOutput()
+
+```
+
+```{r 2.2-2}
+
+ui <- fluidPage(
+plotOutput("plot", width = "700px", height = "300px")
+)
+server <- function(input, output, session) {
+output$plot <- renderPlot(plot(1:5), res = 96,
+                          alt = "Scatterplot of five random numbers")
+}
+
+
+shinyApp(ui, server)
+```
+
+```{r 2.2-3}
+
+ui <- fluidPage(
+ dataTableOutput("table")
+)
+server <- function(input, output, session) {
+  output$table <- renderDataTable(mtcars, options = list(pagelength = 5,
+                                                         sorting = FALSE,
+                                                         searching = FALSE))
+}
+shinyApp(ui, server)
+```
+
+```{r 2.2-4}
+
+ui <- fluidPage(
+  reactableOutput("table")
+)
+server <- function(input, output, session) {
+  output$table <- renderReactable({
+    reactable(mtcars, sortable = FALSE)
+  })
+}
+shinyApp(ui, server)
+
+```
+
+## Chapter 3 Basic Reactivity
+
+```{r}
+
+ui <- fluidPage(
+  textInput("name", "What's your name?"),
+  textOutput("greeting")
+)
+server <- function(input, output, session) {
+  output$greeting <- renderText({
+    paste0("Hello ", input$name, "!")
+  })
+}
+shinyApp(ui,server)
+```
+
+#### Imperative vs Declarative Programming
+
+Immperative programming
+
+  Issue a specific command and it’s carried out immediately. This is the style of
+  programming you’re used to in your analysis scripts: you command R to load
+  your data, transform it, visualize it, and save the results to disk.
+  
+Declarative programming
+
+  Express higher-level goals or describe important constraints, and rely on someone
+  else to decide how and/or when to translate that into action. This is the style
+  of programming you use in Shiny.
+  
+```{r 3.1-1}
+
+server1 <- function(input, output, server) {
+output$greeting <- renderText(paste0("Hello ", input$name))
+}
+
+server2 <- function(input, output, server) {
+  greeting <- paste0("Hello ", input$name)
+  output$greeting <- renderText(greeting())
+}
+
+server3 <- function(input, output, server) {
+output$greting <- renderText(paste0("Hello", input$name))
+}
+
+ui <- fluidPage(
+  textInput("name", "What's your name?"),
+  textOutput("greeting")
+)
+
+server3 <- function(input, output, server) {
+output$greting <- renderText(paste0("Hello", input$name))
+}
+
+shinyApp(ui,server)
+```
+
+
+```{r 3.1-2}
+
+#server1 <- function(input, output, session) {
+#  c <- reactive(input$a + input$b)
+#  e <- reactive(c() + input$d)
+#  output$f <- renderText(e())
+#}
+
+# input$a,input$b>>c>e>f
+
+# input$d > e > f
+
+#server2 <- function(input, output, session) {
+#  x <- reactive(input$x1 + input$x2 + input$x3)
+#  y <- reactive(input$y1 + input$y2)
+#  output$z <- renderText(x() / y())
+#}
+
+# input$x1,input$x2,input$x3 > x > z
+
+# input$y1,input$y2 > y > z
+
+#server3 <- function(input, output, session) {
+#  d <- reactive(c() ^ input$d)
+#  a <- reactive(input$a * 10)
+#  c <- reactive(b() / input$c)
+#  b <- reactive(a() + input$b)
+#}
+
+# A > a > b > c > d
+
+# B > b 
+
+# C > c
+
+# D > d
+
+```
+
+
+```{r 3.1-3}
+
+# The code fails because we changed the range function to reactive call.
+# Its bad practice to name reactives already existing function names
+
+
+
+```
+
+#### Reactive Expressions
 
