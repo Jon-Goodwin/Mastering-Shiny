@@ -1,20 +1,19 @@
-library(shiny)
-ui <- fluidPage(
-  selectInput("dataset", label = "Dataset", choices = ls("package:datasets")),
-  verbatimTextOutput("summary"),
-  tableOutput("table")
+ui <- ui <- fluidPage(
+  titlePanel("Central limit theorem"),
+  sidebarLayout(
+    sidebarPanel(
+      numericInput("m", "Number of samples:", 2, min = 1, max = 100)
+    ),
+    mainPanel(
+      plotOutput("hist")
+    )
+  )
 )
 server <- function(input, output, session) {
-  # Create a reactive expression
-  dataset <- reactive({
-    get(input$dataset, "package:datasets")
-  })
-  output$summary <- renderPrint({
-    # Use a reactive expression by calling it like a function
-    summary(dataset())
-  })
-  output$table <- renderTable({
-    dataset()
-  })
+  output$hist <- renderPlot({
+    means <- replicate(1e4, mean(runif(input$m)))
+    hist(means, breaks = 20)
+  }, res = 96)
 }
-shinyApp(ui, server)
+
+shinyApp(ui,server)
